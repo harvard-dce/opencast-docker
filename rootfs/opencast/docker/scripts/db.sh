@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 export ORG_OPENCASTPROJECT_DB_VENDOR="${ORG_OPENCASTPROJECT_DB_VENDOR:-H2}"
 export NUMBER_OF_TIMES_TRYING_TO_CONNECT_TO_DB="${NUMBER_OF_TIMES_TRYING_TO_CONNECT_TO_DB:-25}"

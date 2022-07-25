@@ -33,16 +33,19 @@ BUILD_DATE        := $(shell date -u +"%Y-%m-%dT%TZ"; sleep 10)
 
 export DOCKER_BUILDKIT = 1
 OPENCAST_DISTRIBUTIONS = \
-	admin \
-	adminpresentation \
 	allinone \
-	ingest \
+	admin \
 	presentation \
 	worker
+#	adminpresentation \
+#	ingest \
 
 # targets
 
 all: lint build
+
+build-env:
+	printenv
 
 .PHONY: build
 build: $(addprefix build-, $(OPENCAST_DISTRIBUTIONS)) build-build

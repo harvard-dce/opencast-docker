@@ -1,0 +1,49 @@
+# Copyright 2016 The WWU eLectures Team All rights reserved.
+#
+# Licensed under the Educational Community License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+#     http://opensource.org/licenses/ECL-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: "3"
+
+volumes:
+  opensearch: {}
+  data: {}
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:1
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: true
+      OPENSEARCH_JAVA_OPTS: -Xms128m -Xmx512m
+      DISABLE_INSTALL_DEMO_CONFIG: true
+      DISABLE_SECURITY_PLUGIN: true
+    volumes:
+      - opensearch:/usr/share/opensearch/data
+
+  opencast:
+    image: hdce/opencast/build:latest
+    tty: true
+    stdin_open: true
+    environment:
+      OPENCAST_BUILD_USER_UID: ${OPENCAST_BUILD_USER_UID:-1000}
+      OPENCAST_BUILD_USER_GID: ${OPENCAST_BUILD_USER_GID:-1000}
+      ORG_OPENCASTPROJECT_SERVER_URL: http://localhost:8080
+      ORG_OPENCASTPROJECT_DOWNLOAD_URL: http://localhost:8080/static
+      ELASTICSEARCH_SERVER_HOST: opensearch
+    ports:
+      - "8080:8080"
+      - "5005:5005"
+    volumes:
+      - data:/data
+      - "${M2_REPO:-~/.m2}:/home/opencast-builder/.m2"
+      - "${OPENCAST_SRC}:/usr/src/opencast"

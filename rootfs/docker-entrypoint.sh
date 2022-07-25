@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 # shellcheck source=./opencast/docker/scripts/helper.sh
 . "${OPENCAST_SCRIPTS}/helper.sh"
@@ -34,7 +34,6 @@ set -e
 . "${OPENCAST_SCRIPTS}/mariadb.sh"
 # shellcheck source=./opencast/docker/scripts/postgresql.sh
 . "${OPENCAST_SCRIPTS}/postgresql.sh"
-
 
 opencast_main_check() {
   echo "Run opencast_main_check"
@@ -64,7 +63,7 @@ opencast_main_init() {
   echo "Run opencast_main_init"
 
   opencast_file_env
-  opencast_tz_set
+  # opencast_tz_set
 
   if opencast_helper_customconfig; then
     echo "Found custom config in ${OPENCAST_CUSTOM_CONFIG}"
@@ -121,7 +120,10 @@ opencast_main_start() {
     exec su-exec "${OPENCAST_USER}":"${OPENCAST_GROUP}" bin/start-opencast debug
   fi
 
-  su-exec "${OPENCAST_USER}":"${OPENCAST_GROUP}" bin/start-opencast daemon &
+  opencast_main_watch_customconfig_job &
+  export OC_WATCH_CUSTOM_CONFIG_PID=$!
+
+  /usr/local/sbin/su-exec "${OPENCAST_USER}":"${OPENCAST_GROUP}" bin/start-opencast daemon &
   OC_PID=$!
   trap opencast_main_stop TERM INT
 

@@ -22,6 +22,12 @@
 -   [Languages](#languages)
 -   [References](#references)
 
+## DCE Notes
+
+- to build use one of these:
+    - dotenv run make build (or build-admin, build-presentation, etc)
+    - dotenv run dce-build.sh
+
 ## Introduction
 
 This repository holds `Dockerfiles` for creating [Opencast](http://www.opencast.org/) container images.

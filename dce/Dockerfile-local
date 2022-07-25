@@ -1,0 +1,94 @@
+FROM amazoncorretto:11
+
+# we need these so that the container user runs with same permissions as host user
+ARG UID=1000
+ARG GID=1000
+
+# This is our static build of ffmpeg
+ARG FFMPEG_PACKAGE="https://mh-opsworks-shared-assets.s3.amazonaws.com/ffmpeg-4.4.1-amazon-linux-static.tgz"
+
+# Sometimes versions of maven disappear from the apache download site
+ARG MAVEN_VERSION=3.8.7
+
+# install manually because amazoncorretto yum installs an old 3.0.x version
+ARG MAVEN_PACKAGE="https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+
+# opencast will be installed here
+ENV OPENCAST_HOME="/opencast" \
+	# opencast user's home here
+	OPENCAST_UHOME="/home/opencast" \
+	# some stuff about our opencast container user
+	OPENCAST_UID=$UID \
+	OPENCAST_GID=$GID \
+	OPENCAST_USER="opencast" \
+	OPENCAST_GROUP="opencast"
+
+# our entrypoint script uses these values at container start
+ENV OPENCAST_CONFIG="${OPENCAST_HOME}/etc" \
+	OPENCAST_SCRIPTS="${OPENCAST_HOME}/docker/scripts" \
+	OPENCAST_STAGE_BASE_HOME="${OPENCAST_HOME}/docker/stage/base" \
+	OPENCAST_STAGE_OUT_HOME="${OPENCAST_HOME}/docker/stage/out" \
+	ORG_OPENCASTPROJECT_SECURITY_ADMIN_USER="admin" \
+	ORG_OPENCASTPROJECT_SECURITY_ADMIN_PASS="opencast" \
+	ORG_OPENCASTPROJECT_SECURITY_DIGEST_USER="opencast_system_account" \
+	ORG_OPENCASTPROJECT_SECURITY_DIGEST_PASS="CHANGE_ME"
+
+# install OS package dependencies
+RUN amazon-linux-extras install epel ruby2.6 java-openjdk11 -y \
+	&& yum update -y \
+	&& yum install -y mariadb postfix mailx git wget jq tesseract \
+	gcc glibc-dev make openssl tar gzip hostname sudo procps inotify-tools \
+	&& yum clean all \
+	&& rm -rf /var/cache/yum
+
+# we use this to start the opencast daemon as the opencast user
+RUN git clone https://github.com/ncopa/su-exec.git /tmp/su-exec \
+	&& cd /tmp/su-exec \
+	&& make \
+	&& cp su-exec /usr/local/sbin
+
+# install our ffmpeg
+RUN wget --no-verbose -O /tmp/ffmpeg.tgz ${FFMPEG_PACKAGE} \
+	&& /bin/tar -C /opt -xzf /tmp/ffmpeg.tgz \
+	&& rm /tmp/ffmpeg.tgz
+
+# install our maven
+RUN wget --no-verbose -O /tmp/maven.tgz ${MAVEN_PACKAGE} \
+	&& /bin/tar -C /opt -xzvf /tmp/maven.tgz \
+	&& mv /opt/apache-maven-${MAVEN_VERSION} /opt/apache-maven \
+	&& rm /tmp/maven.tgz
+
+# ensure our maven/ffmpeg are in the path (and first)
+ENV PATH="/opt/ffmpeg-4.4.1:/opt/apache-maven/bin:${PATH}"
+
+# add our opencast user and give it sudo
+RUN groupadd --system -g "${OPENCAST_GID}" "${OPENCAST_GROUP}" \
+	&& useradd --system -m -N -g "${OPENCAST_GROUP}" -d "${OPENCAST_UHOME}" -u "${OPENCAST_UID}" "${OPENCAST_USER}" \
+	&& echo "${OPENCAST_USER} ALL = NOPASSWD: ALL" > /etc/sudoers.d/opencast
+
+# copy the opencast build into the image
+COPY --chown=${OPENCAST_USER}:${OPENCAST_GROUP} matterhorn-dce-fork/build/opencast-dist-*-SNAPSHOT ${OPENCAST_HOME}
+COPY --chown=${OPENCAST_USER}:${OPENCAST_GROUP} rootfs /
+COPY --chown=${OPENCAST_USER}:${OPENCAST_GROUP} mh-opsworks-recipes/templates/default ${OPENCAST_HOME}/config-templates
+
+# test the DB connection
+RUN javac "${OPENCAST_SCRIPTS}/TryToConnectToDb.java" \
+	&& rm -rf /tmp/* "${OPENCAST_SCRIPTS}/TryToConnectToDb.java"
+
+# change to the opencast dir and user
+WORKDIR ${OPENCAST_HOME}
+USER ${OPENCAST_USER}
+
+# tell docker (and anyone reading this Dockerfile) that our container will be listining on 8080
+EXPOSE 8080
+
+# tesll docker that we'll be mounting host directories to these paths
+VOLUME ${OPENCAST_HOME}/system ${OPENCAST_HOME}/dce-config
+
+# tell docker what to run our CMD with
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+#CMD ["sleep", "infinity"]
+
+# container start command
+CMD ["app:start"]

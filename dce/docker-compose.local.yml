@@ -1,0 +1,78 @@
+# Copyright 2016 The WWU eLectures Team All rights reserved.
+#
+# Licensed under the Educational Community License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+#     http://opensource.org/licenses/ECL-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: "3"
+
+volumes:
+  db: {}
+  elastic: {}
+
+services:
+  mariadb:
+    image: mariadb:10.5
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: opencast
+      MYSQL_USER: opencast
+      MYSQL_PASSWORD: opencast
+    command: "--wait_timeout=28800"
+    volumes:
+      - db:/var/lib/mysql
+
+  activemq:
+    image: webcenter/activemq:5.14.3
+    environment:
+      - ACTIVEMQ_MIN_MEMORY=128
+      - ACTIVEMQ_MAX_MEMORY=1024
+      - ACTIVEMQ_ENABLED_SCHEDULER=true
+      - ACTIVEMQ_REMOVE_DEFAULT_ACCOUNT=true
+      - ACTIVEMQ_OWNER_LOGIN=admin
+      - ACTIVEMQ_OWNER_PASSWORD=password
+    volumes:
+      - ./assets/activemq.xml:/opt/activemq/conf/activemq.xml:ro
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: '-Dlog4j2.formatMsgNoLookups=true'
+    volumes:
+      - elastic:/usr/share/elasticsearch/data
+
+  opencast:
+    image: oclocaldocker:latest
+    tty: true
+    stdin_open: true
+    user: "${OPENCAST_UID}:${OPENCAST_GID}"
+    environment:
+      TIMEZONE: EST
+      OPENCAST_DISTRIBUTION: allinone
+      ORG_OPENCASTPROJECT_SERVER_URL: http://localhost:8080
+      ORG_OPENCASTPROJECT_DOWNLOAD_URL: http://localhost:8080/static
+      ORG_OPENCASTPROJECT_SECURITY_ADMIN_USER: admin
+      ORG_OPENCASTPROJECT_SECURITY_ADMIN_PASS: opencast
+      ORG_OPENCASTPROJECT_SECURITY_DIGEST_USER: opencast_system_account
+      ORG_OPENCASTPROJECT_SECURITY_DIGEST_PASS: CHANGE_ME
+      ORG_OPENCASTPROJECT_DB_VENDOR: MariaDB
+      ORG_OPENCASTPROJECT_DB_JDBC_URL: jdbc:mariadb://mariadb/opencast?useMysqlMetadata=true
+      ORG_OPENCASTPROJECT_DB_JDBC_USER: opencast
+      ORG_OPENCASTPROJECT_DB_JDBC_PASS: opencast
+      ELASTICSEARCH_SERVER_HOST: elasticsearch
+    ports:
+      - "8080:8080"
+      - "5005:5005"
+    volumes:
+      - ${HOME}/.m2:/home/opencast/.m2
+      - ../matterhorn-dce-fork/build/opencast-dist-allinone-11-SNAPSHOT/system:/opencast/system:rw
+      - ../matterhorn-dce-fork/dce-config:/opencast/dce-config:rw

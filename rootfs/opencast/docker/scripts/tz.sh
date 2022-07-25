@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -ex
 
 TIMEZONE="${TIMEZONE:-UTC}"
 
@@ -23,6 +23,6 @@ opencast_tz_set() {
   echo "  Setting timezone to ${TIMEZONE}"
 
   ln -snf "/usr/share/zoneinfo/${TIMEZONE}" /etc/localtime
-  echo "${TIMEZONE}" > /etc/timezone
-  echo "${TIMEZONE}" > /etc/TIMEZONE
+  echo "${TIMEZONE}" >/etc/timezone
+  echo "${TIMEZONE}" >/etc/TIMEZONE
 }

@@ -9,3 +9,18 @@ README.md
 VERSION
 VERSION_FFMPEG
 VERSION_OPENCAST
+
+# DCE LOCAL DEV
+# opencast stuff we don't need
+matterhorn-dce-fork/NOTICES
+matterhorn-dce-fork/buildspec*
+matterhorn-dce-fork/docs/
+matterhorn-dce-fork/modules/
+matterhorn-dce-fork/assemblies/
+
+# modules and dce-config will be host-mounted at run time
+matterhorn-dce-fork/dce-config/
+
+# we only need the recipe config templates
+mh-opsworks-recipes
+!mh-opsworks-recipes/templates/default
